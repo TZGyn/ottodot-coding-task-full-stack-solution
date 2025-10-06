@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import { AlertCircleIcon } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { AlertCircleIcon, Divide, Loader2Icon } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface MathProblem {
 	problem_text: string
@@ -10,13 +11,47 @@ interface MathProblem {
 
 export default function Home() {
 	const [problem, setProblem] = useState<MathProblem | null>(null)
+	const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>(
+		'easy'
+	)
+	const [stepByStepSolution, setStepByStepSolution] = useState<string[]>([])
+	const [showSolution, setShowSolution] = useState<boolean>(false)
 	const [userAnswer, setUserAnswer] = useState('')
 	const [feedback, setFeedback] = useState('')
+	const [hint, setHint] = useState('')
 	const [isLoading, setIsLoading] = useState(false)
+	const [isSubmitting, setIsSubmitting] = useState(false)
 	const [sessionId, setSessionId] = useState<string | null>(null)
 	const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
 	const [generateProblemError, setGenerateProblemError] = useState('')
 	const [submitProblemError, setSubmitProblemError] = useState('')
+
+	const [problemHistory, setProblemHistory] = useState<
+		{
+			id: string
+			problem_text: string
+			correct_answer: number
+			submissions: {
+				is_correct: boolean
+			}[]
+		}[]
+	>([])
+
+	const getHistory = async () => {
+		try {
+			const response = await fetch('/api/history')
+
+			if (response.status === 200) {
+				const data = await response.json()
+
+				setProblemHistory(data.history)
+			}
+		} catch (error) {}
+	}
+
+	useEffect(() => {
+		getHistory()
+	}, [])
 
 	const generateProblem = async () => {
 		// TODO: Implement problem generation logic
@@ -27,6 +62,9 @@ export default function Home() {
 		setGenerateProblemError('')
 		setSubmitProblemError('')
 		setFeedback('')
+		setHint('')
+		setStepByStepSolution([])
+		setShowSolution(false)
 		setUserAnswer('')
 		setProblem(null)
 		setSessionId(null)
@@ -34,11 +72,20 @@ export default function Home() {
 		try {
 			const response = await fetch('/api/math-problem', {
 				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					difficulty,
+				}),
 			})
 			if (response.status === 200) {
 				const data = await response.json()
 				setProblem(data)
 				setSessionId(data.sessionId)
+				setStepByStepSolution(data.step_by_step_solution)
+
+				getHistory()
 
 				return
 			}
@@ -61,7 +108,7 @@ export default function Home() {
 		// This should call your API route to check the answer,
 		// save the submission, and generate feedback
 
-		setIsLoading(true)
+		setIsSubmitting(true)
 
 		setGenerateProblemError('')
 		setSubmitProblemError('')
@@ -82,7 +129,10 @@ export default function Home() {
 			if (response.status === 200) {
 				const data = await response.json()
 				setFeedback(data.feedback)
+				setHint(data.hint)
 				setIsCorrect(!!data.isCorrect)
+
+				getHistory()
 
 				return
 			}
@@ -95,7 +145,7 @@ export default function Home() {
 				'Something went wrong when submitting solution, please try again'
 			)
 		} finally {
-			setIsLoading(false)
+			setIsSubmitting(false)
 		}
 	}
 
@@ -106,12 +156,27 @@ export default function Home() {
 					Math Problem Generator
 				</h1>
 
-				<div className='mb-6 rounded-lg bg-white p-6 shadow-lg'>
+				<div className='mb-6 flex flex-col items-center gap-2 rounded-lg bg-white p-6 shadow-lg sm:flex-row'>
+					<select
+						name='difficulty'
+						id='difficulty'
+						value={difficulty}
+						onChange={(e) =>
+							setDifficulty(
+								e.target.value as 'easy' | 'medium' | 'hard'
+							)
+						}
+						className='w-full rounded-lg border border-gray-500 px-4 py-3 text-gray-800 sm:max-w-fit'>
+						<option value='easy'>Easy</option>
+						<option value='medium'>Medium</option>
+						<option value='hard'>Hard</option>
+					</select>
 					<button
 						onClick={generateProblem}
-						disabled={isLoading}
-						className='w-full transform rounded-lg bg-blue-600 px-4 py-3 font-bold text-white transition duration-200 ease-in-out hover:scale-105 hover:bg-blue-700 disabled:bg-gray-400'>
-						{isLoading ? 'Generating...' : 'Generate New Problem'}
+						disabled={isLoading || isSubmitting}
+						className='flex w-full transform items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 font-bold text-white transition duration-200 ease-in-out hover:scale-105 hover:bg-blue-700 disabled:bg-gray-400'>
+						{isLoading && <Loader2Icon className='animate-spin' />}
+						{isLoading ? 'Generating' : 'Generate New Problem'}
 					</button>
 				</div>
 
@@ -148,8 +213,13 @@ export default function Home() {
 
 							<button
 								type='submit'
-								disabled={!userAnswer || isLoading}
-								className='w-full transform rounded-lg bg-green-600 px-4 py-3 font-bold text-white transition duration-200 ease-in-out hover:scale-105 hover:bg-green-700 disabled:bg-gray-400'>
+								disabled={
+									!userAnswer || isLoading || isSubmitting
+								}
+								className='flex w-full transform items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-3 font-bold text-white transition duration-200 ease-in-out hover:scale-105 hover:bg-green-700 disabled:bg-gray-400'>
+								{isSubmitting && (
+									<Loader2Icon className='animate-spin' />
+								)}
 								Submit Answer
 							</button>
 						</form>
@@ -158,7 +228,7 @@ export default function Home() {
 
 				{feedback && (
 					<div
-						className={`rounded-lg p-6 shadow-lg ${isCorrect ? 'border-2 border-green-200 bg-green-50' : 'border-2 border-yellow-200 bg-yellow-50'}`}>
+						className={`mb-6 rounded-lg p-6 shadow-lg ${isCorrect ? 'border-2 border-green-200 bg-green-50' : 'border-2 border-yellow-200 bg-yellow-50'}`}>
 						<h2 className='mb-4 text-xl font-semibold text-gray-700'>
 							{isCorrect ? '✅ Correct!' : '❌ Not quite right'}
 						</h2>
@@ -166,6 +236,42 @@ export default function Home() {
 							{feedback}
 						</p>
 					</div>
+				)}
+
+				{hint && !isCorrect && (
+					<div
+						className={`mb-6 rounded-lg border-2 border-yellow-200 bg-yellow-50 p-6 shadow-lg`}>
+						<h2 className='mb-4 text-xl font-semibold text-gray-700'>
+							{/* hint */}
+							💡Hint
+						</h2>
+						<p className='leading-relaxed text-gray-800'>{hint}</p>
+					</div>
+				)}
+
+				{stepByStepSolution.length > 0 && (
+					<>
+						<div className='p-6'>
+							<button
+								onClick={() => setShowSolution(!showSolution)}
+								className='flex w-full transform items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 font-bold text-white transition duration-200 ease-in-out hover:scale-105 hover:bg-blue-700 disabled:bg-gray-400'>
+								Toggle Solution
+							</button>
+						</div>
+						{showSolution &&
+							stepByStepSolution.map((solution, index) => (
+								<div
+									key={index}
+									className={`mb-6 rounded-lg border-2 bg-white p-6 shadow-lg`}>
+									<h2 className='mb-4 text-xl font-semibold text-gray-700'>
+										Step {index + 1}
+									</h2>
+									<p className='leading-relaxed text-gray-800'>
+										{solution}
+									</p>
+								</div>
+							))}
+					</>
 				)}
 
 				{generateProblemError && (
@@ -187,6 +293,45 @@ export default function Home() {
 							Error
 						</h2>
 						<p className='leading-relaxed'>{submitProblemError}</p>
+					</div>
+				)}
+
+				{problemHistory.length > 0 && (
+					<div className='mt-4 text-gray-800'>
+						<div className='mb-4 text-center text-4xl font-bold'>
+							Problem History
+						</div>
+						{problemHistory.map((problem, index) => (
+							<div
+								key={index}
+								onClick={() => {
+									setProblem({
+										final_answer: problem.correct_answer,
+										problem_text: problem.problem_text,
+									})
+									setSessionId(problem.id)
+									setStepByStepSolution([])
+								}}
+								className={cn(
+									'flex items-center justify-between gap-6 border-b py-2 hover:cursor-pointer hover:bg-gray-200',
+									index === 0 && 'border-t'
+								)}>
+								<div className='line-clamp-1'>
+									{problem.problem_text}
+								</div>
+								<div>
+									<span className='text-green-500'>
+										{
+											problem.submissions.filter(
+												(submission) =>
+													submission.is_correct
+											).length
+										}
+									</span>
+									<span>/{problem.submissions.length}</span>
+								</div>
+							</div>
+						))}
 					</div>
 				)}
 			</main>

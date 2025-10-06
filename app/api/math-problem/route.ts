@@ -2,14 +2,28 @@ import { gemini } from '@/lib/ai/gemini'
 import { nanoid } from '@/lib/nanoid'
 import { supabase } from '@/lib/supabaseClient'
 import { generateObject } from 'ai'
+import { NextResponse } from 'next/server'
 import z from 'zod'
 
 export const POST = async (request: Request) => {
+	const body = await request.json()
+
+	const parsed = z
+		.object({
+			difficulty: z.enum(['easy', 'medium', 'hard']),
+		})
+		.safeParse(body)
+
+	if (!parsed.success) {
+		return NextResponse.json({ success: false })
+	}
+
 	const { object } = await generateObject({
 		model: gemini('gemini-2.5-pro'),
 		schema: z.object({
 			problem_text: z.string(),
 			final_answer: z.number(),
+			step_by_step_solution: z.array(z.string()),
 		}),
 		messages: [
 			{
@@ -102,6 +116,10 @@ export const POST = async (request: Request) => {
 				content: [
 					{
 						text: 'Generate an random question from the syllabus',
+						type: 'text',
+					},
+					{
+						text: `Difficulty: ${parsed.data.difficulty}`,
 						type: 'text',
 					},
 				],

@@ -33,6 +33,7 @@ export const POST = async (request: Request) => {
 		model: gemini('gemini-2.0-flash'),
 		schema: z.object({
 			feedback_text: z.string(),
+			hint: z.string(),
 			is_correct: z.boolean(),
 		}),
 		messages: [
@@ -47,6 +48,8 @@ export const POST = async (request: Request) => {
 					Then you will be presented the user's answer
 					There might be times where the generated answer is incorrect
 					You must make sure that you return correct only when the user's answer is correct
+
+					You may provide hint for the user as well
 				`,
 			},
 			{
@@ -85,6 +88,7 @@ export const POST = async (request: Request) => {
 			success: true,
 			feedback: object.feedback_text,
 			isCorrect: object.is_correct,
+			hint: object.hint,
 		},
 		{ status: 200 }
 	)

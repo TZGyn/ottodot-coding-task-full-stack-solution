@@ -150,12 +150,12 @@ _Please fill in this section with any important notes about your implementation,
 
 If you have time, consider adding:
 
-- [ ] Difficulty levels (Easy/Medium/Hard)
-- [ ] Problem history view
-- [ ] Score tracking
-- [ ] Different problem types (addition, subtraction, multiplication, division)
-- [ ] Hints system
-- [ ] Step-by-step solution explanations
+- [x] Difficulty levels (Easy/Medium/Hard)
+- [x] Problem history view
+- [x] Score tracking
+- [x] Different problem types (addition, subtraction, multiplication, division)
+- [x] Hints system
+- [x] Step-by-step solution explanations
 
 ---
 
