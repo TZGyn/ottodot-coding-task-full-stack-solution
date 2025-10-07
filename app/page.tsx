@@ -294,7 +294,11 @@ export default function Home() {
 						<div className='p-6'>
 							<button
 								onClick={() => getSolution()}
+								disabled={isGeneratingSolution}
 								className='flex w-full transform items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 font-bold text-white transition duration-200 ease-in-out hover:scale-105 hover:bg-blue-700 disabled:bg-gray-400'>
+								{isGeneratingSolution && (
+									<Loader2Icon className='animate-spin' />
+								)}
 								Toggle Solution
 							</button>
 						</div>
