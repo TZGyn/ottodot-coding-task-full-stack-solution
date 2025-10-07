@@ -21,10 +21,12 @@ export default function Home() {
 	const [hint, setHint] = useState('')
 	const [isLoading, setIsLoading] = useState(false)
 	const [isSubmitting, setIsSubmitting] = useState(false)
+	const [isGeneratingSolution, setIsGeneratingSolution] = useState(false)
 	const [sessionId, setSessionId] = useState<string | null>(null)
 	const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
 	const [generateProblemError, setGenerateProblemError] = useState('')
 	const [submitProblemError, setSubmitProblemError] = useState('')
+	const [generateSolutionError, setGenerateSolutionError] = useState('')
 
 	const [problemHistory, setProblemHistory] = useState<
 		{
@@ -138,7 +140,7 @@ export default function Home() {
 			}
 
 			setGenerateProblemError(
-				'Something went wrong when generating a new problem, please try again'
+				'Something went wrong when submitting solution, please try again'
 			)
 		} catch (error) {
 			setGenerateProblemError(
@@ -146,6 +148,44 @@ export default function Home() {
 			)
 		} finally {
 			setIsSubmitting(false)
+		}
+	}
+
+	const getSolution = async () => {
+		setIsGeneratingSolution(true)
+		try {
+			if (stepByStepSolution.length > 0) {
+				setShowSolution(!showSolution)
+				return
+			}
+			const response = await fetch('/api/math-problem/solution', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					problem_text: problem?.problem_text || '',
+					final_answer: problem?.final_answer || 0,
+				}),
+			})
+
+			if (response.status === 200) {
+				const data = await response.json()
+				setStepByStepSolution(data.step_by_step_solution)
+				setShowSolution(true)
+
+				return
+			}
+
+			setGenerateSolutionError(
+				'Something went wrong when generating a new problem, please try again'
+			)
+		} catch (error) {
+			setGenerateSolutionError(
+				'Something went wrong when generating a new problem, please try again'
+			)
+		} finally {
+			setIsGeneratingSolution(false)
 		}
 	}
 
@@ -249,7 +289,7 @@ export default function Home() {
 					</div>
 				)}
 
-				{stepByStepSolution.length > 0 && (
+				{problem && (
 					<>
 						<div className='p-6'>
 							<button
